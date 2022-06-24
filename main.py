@@ -1,18 +1,18 @@
-import os
-import threading
-import requests
-import fuckit
-fuckit(fuckit('COL'))
 from queue import Queue
 from bs4 import BeautifulSoup
 from os.path import exists
 from Levenshtein import ratio
+import os
+import threading
+import requests
+import fuckit
 
+fuckit(fuckit('COL'))
 link = input('Link: ')
 
 genera = []
 with requests.Session() as session:
-    page = requests.get(link, headers={'User-Agent':'Beans'})
+    page = requests.get(link, headers={'User-Agent': 'Beans'})
     soup = BeautifulSoup(page.text, 'html.parser')
     fam = soup.find('h1', {'class': 'c-summary__heading'})
     fam = fam.text.split(' ')
@@ -27,29 +27,34 @@ else:
         children2 = child.find('a', href=True)
         if 'taxon' in str(children2['href']):
             genera.append('https://powo.science.kew.org' + str(children2['href']))
-    
+
     with open('_save.txt', 'w+') as f:
         for l in genera:
             f.write(l + '\n')
 
 spellings = []
+
+
 def updateStatus():
     global spellings
     global genera
     os.system('clear')
     print('Genera remaining: ' + str(len(genera)))
 
+
 q = Queue()
+
+
 def getGenera(link):
     global spellings
     global genera
     KEW = []
-    with requests.Session() as session:
-        page = requests.get(link, headers={'User-Agent':'Beans'})
+    with requests.Session():
+        page = requests.get(link, headers={'User-Agent': 'Beans'})
     soup = BeautifulSoup(page.text, 'html.parser')
     results = soup.findAll('ul', {'class': 'two-col'})
     genre = soup.find('h1', {'class': 'c-summary__heading'})
-    if genre == None:
+    if genre is None:
         return None
     genus = genre.text.split(' ')
     genus = genus[0]
@@ -64,16 +69,15 @@ def getGenera(link):
     NGA = []
     searching = True
     i = 0
-    form_data = {}
-    form_data['u'] = 'USERNAME'
-    form_data['p'] = 'PASSCODE'
+    form_data = {'u': 'USERNAME', 'p': 'PASSCODE'}
     with requests.Session() as session:
-        session.headers.update({'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0'})
+        session.headers.update(
+            {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0'})
         session.get('https://garden.org/login.php')
         session.post('https://garden.org/i/ajax/users/login_check.php', form_data)
         session.get('https://garden.org/loggedin.php')
         while True:
-            p = i*20
+            p = i * 20
             page = session.get('https://garden.org/plants/browse/plants/genus/' + str(genus) + '/?offset=' + str(p))
             soup = BeautifulSoup(page.text, 'html.parser')
             results = soup.find_all('td')
@@ -81,7 +85,7 @@ def getGenera(link):
                 searching = False
                 break
             for result in results:
-                children = result.findChildren('a' , recursive=False)
+                children = result.findChildren('a', recursive=False)
                 for child in children:
                     if child and child != '':
                         NGA.append(child.text)
@@ -97,7 +101,8 @@ def getGenera(link):
             elif 1 > ratio(pl, plant) > 0.9:
                 spl.append([pl, plant])
     with requests.Session() as session:
-        session.headers.update({'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0'})
+        session.headers.update(
+            {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0'})
         session.get('https://garden.org/login.php')
         session.post('https://garden.org/i/ajax/users/login_check.php', form_data)
         session.get('https://garden.org/loggedin.php')
@@ -107,13 +112,13 @@ def getGenera(link):
             i += 1
             updateStatus()
             dne = COL.search(t)
-            if dne == False:
+            if dne is False:
                 if t in final:
-                    final.remove(t) 
+                    final.remove(t)
                 continue
             if dne[0]['usage']['status'] != 'accepted':
                 if t in final:
-                    final.remove(t) 
+                    final.remove(t)
                 continue
             page = session.get('https://garden.org/plants/search/text/?q=' + t)
             if page.status_code != 200:
@@ -121,7 +126,7 @@ def getGenera(link):
             soup = BeautifulSoup(page.text, 'html.parser')
             if 'No plants were found for your search.' not in page.text:
                 if t in final:
-                    final.remove(t) 
+                    final.remove(t)
                 continue
             syn = COL.getSynonyms(t)
             with fuckit:
@@ -132,7 +137,7 @@ def getGenera(link):
                         results = soup.find_all('td')
                         if len(results) > 0:
                             if t in final:
-                                final.remove(t) 
+                                final.remove(t)
                             continue
     if final:
         spl1 = []
@@ -141,15 +146,15 @@ def getGenera(link):
             if s[0] in final:
                 spl1.append(s[0])
                 spl2.append(s[1])
-        with open('Sorted/'+fam+'.txt', 'a') as f:
+        with open('Sorted/' + fam + '.txt', 'a') as f:
             for plant in final:
                 try:
                     if plant not in spl1:
-                        f.write(plant+'\n')
+                        f.write(plant + '\n')
                     else:
                         f.write('W ' + plant + ' = ' + spl2[spl1.index(plant)] + '?\n')
                 except:
-                    f.write(plant+'\n')
+                    f.write(plant + '\n')
     genera.remove(link)
     if len(genera) > 0:
         with open('_save.txt', 'w+') as f:
@@ -158,9 +163,10 @@ def getGenera(link):
     else:
         os.remove('_save.txt')
 
-      
+
 for l in genera:
     q.put(l)
+
 
 def worker():
     while True:
@@ -168,9 +174,10 @@ def worker():
         getGenera(item)
         q.task_done()
 
+
 for i in range(5):
-     t = threading.Thread(target=worker)
-     t.daemon = True
-     t.start()
+    t = threading.Thread(target=worker)
+    t.daemon = True
+    t.start()
 
 q.join()
